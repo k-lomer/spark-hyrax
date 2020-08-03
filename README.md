@@ -7,7 +7,7 @@ The `lb.edu.aub.hyrax` package contains two implementations of the Classical Gra
 This implementation uses custom matrix classes for distributed operations. Please see the Matrix documentation notebook for more information on the Matrix operations
 
 ### Operation Definition
-Vectors \\(u,v\in \mathbb{R}^n\\) said to be _A-orthonormal_ for a given \\(n\times n\\) matrix \\(A\\), if \\(u^tAv=0\\) and \\(u^tAu=v^tAv=1\\)
+Vectors \\(u,v\in \mathbb{R}^n\\) said to be _A-orthonormal_ for a given $n\times n$ matrix \\(A\\), if \\(u^tAv=0\\) and \\(u^tAu=v^tAv=1\\)
 
 The Block Classical Gram–Schmidt A-orthonormalization operation (BCGS) takes a \\(n\times tk\\) matrix \\(Q\\) whose columns are A-orthonormal and a \\(n\times t\\) matrix \\(P\\) whose columns will be A-orthonormalized. The return value is a \\(n\times t\\) matrix \\(P'\\) whose columns are A-orthonormal to those of \\(Q\\). For greater numerical accuracy, we apply the routine twice, first to \\((Q,P)\\) and then to \\((Q,P')\\). This is known as BCGS2.
 
