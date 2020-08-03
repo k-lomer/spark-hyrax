@@ -1,2 +1,14 @@
+# Scala
 *.class
 *.log
+
+# Build
+bin/
+project/
+target/
+build/
+
+# IntelliJ
+.idea/
+
+
