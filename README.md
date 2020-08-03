@@ -435,7 +435,7 @@ val dsm = new DistributedSparseMatrix(entries, 3)
 >  
 > output: `DistributedDenseMatrix` of dimension _(n, k)_
 
-```
+```Scala
 // Create an entries RDD
 val entries: RDD[(Long, (Long, Double))] = sc.parallelize(Seq((0, (0, 1.0)),
                                                               (1, (1, 2.0)),
