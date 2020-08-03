@@ -7,26 +7,26 @@ The `lb.edu.aub.hyrax` package contains two implementations of the Classical Gra
 This implementation uses custom matrix classes for distributed operations. Please see the Matrix documentation notebook for more information on the Matrix operations
 
 ### Operation Definition
-Vectors \\(u,v\in \mathbb{R}^n\\) said to be _A-orthonormal_ for a given $n\times n$ matrix \\(A\\), if \\(u^tAv=0\\) and \\(u^tAu=v^tAv=1\\)
+Vectors <img src="https://render.githubusercontent.com/render/math?math=u,v\in \mathbb{R}^n"> said to be _A-orthonormal_ for a given <img src="https://render.githubusercontent.com/render/math?math=n\times n"> matrix <img src="https://render.githubusercontent.com/render/math?math=A">, if <img src="https://render.githubusercontent.com/render/math?math=u^tAv=0"> and <img src="https://render.githubusercontent.com/render/math?math=u^tAu=v^tAv=1">
 
-The Block Classical Gram–Schmidt A-orthonormalization operation (BCGS) takes a \\(n\times tk\\) matrix \\(Q\\) whose columns are A-orthonormal and a \\(n\times t\\) matrix \\(P\\) whose columns will be A-orthonormalized. The return value is a \\(n\times t\\) matrix \\(P'\\) whose columns are A-orthonormal to those of \\(Q\\). For greater numerical accuracy, we apply the routine twice, first to \\((Q,P)\\) and then to \\((Q,P')\\). This is known as BCGS2.
+The Block Classical Gram–Schmidt A-orthonormalization operation (BCGS) takes a <img src="https://render.githubusercontent.com/render/math?math=n\times tk"> matrix <img src="https://render.githubusercontent.com/render/math?math=Q"> whose columns are A-orthonormal and a <img src="https://render.githubusercontent.com/render/math?math=n\times t"> matrix <img src="https://render.githubusercontent.com/render/math?math=P"> whose columns will be A-orthonormalized. The return value is a <img src="https://render.githubusercontent.com/render/math?math=n\times t"> matrix <img src="https://render.githubusercontent.com/render/math?math=P'"> whose columns are A-orthonormal to those of <img src="https://render.githubusercontent.com/render/math?math=Q">. For greater numerical accuracy, we apply the routine twice, first to <img src="https://render.githubusercontent.com/render/math?math=(Q,P)"> and then to <img src="https://render.githubusercontent.com/render/math?math=(Q,P')">. This is known as BCGS2.
 
 ##Regular implementation
-The naive implementation of BCGS requires the sparse matrix \\(A\\) as an input and is twice multiplied by the tall skinny dense matrix \\(P\\) during the routine.  
-This may involve data shuffling between partitions if there are values in \\(A\\) which are off of the block diagonal.
+The naive implementation of BCGS requires the sparse matrix <img src="https://render.githubusercontent.com/render/math?math=A"> as an input and is twice multiplied by the tall skinny dense matrix <img src="https://render.githubusercontent.com/render/math?math=P"> during the routine.  
+This may involve data shuffling between partitions if there are values in <img src="https://render.githubusercontent.com/render/math?math=A"> which are off of the block diagonal.
 
 **Algorithm**  A-orthonormalization against previous vectors with BCGS
 ___
-> **Input:** \\(A\\), the \\(n\times n\\) symmetrix positive definite matrix  
-> **Input:** \\(Q\\), the \\(tk\\) column vectors to A-orthonormalize against  
-> **Input:** \\(P\\), the \\(t\\) column vectors to be A-orthonormalized  
-> **Output:** \\(\tilde{P}\\), \\(P\\) A-orthonormalized against \\(Q\\)
+> **Input:** <img src="https://render.githubusercontent.com/render/math?math=A">, the <img src="https://render.githubusercontent.com/render/math?math=n\times n"> symmetrix positive definite matrix  
+> **Input:** <img src="https://render.githubusercontent.com/render/math?math=Q">, the <img src="https://render.githubusercontent.com/render/math?math=tk"> column vectors to A-orthonormalize against  
+> **Input:** <img src="https://render.githubusercontent.com/render/math?math=P">, the <img src="https://render.githubusercontent.com/render/math?math=t"> column vectors to be A-orthonormalized  
+> **Output:** <img src="https://render.githubusercontent.com/render/math?math=\tilde{P}">, <img src="https://render.githubusercontent.com/render/math?math=P"> A-orthonormalized against <img src="https://render.githubusercontent.com/render/math?math=Q">
 
-1. \\(W=AP\\)
-2. \\(\tilde{P}= P - Q(Q^tW)\\)
-3. \\(\tilde{W} = A\tilde{P}\\)
-4. **for** \\(i=1:t\\) **do**
-5. \\(\quad \tilde{P}(:,i)=\frac{\tilde{P}(:i)}{\sqrt{\tilde{P}(:i)^t\tilde{W}(:,i)}}\\)
+1. <img src="https://render.githubusercontent.com/render/math?math=W=AP">
+2. <img src="https://render.githubusercontent.com/render/math?math=\tilde{P}= P - Q(Q^tW)">
+3. <img src="https://render.githubusercontent.com/render/math?math=\tilde{W} = A\tilde{P}">
+4. **for** <img src="https://render.githubusercontent.com/render/math?math=i=1:t"> **do**
+5. <img src="https://render.githubusercontent.com/render/math?math=\quad \tilde{P}(:,i)=\frac{\tilde{P}(:i)}{\sqrt{\tilde{P}(:i)^t\tilde{W}(:,i)}}">
 6. **end for**
 
 `aorthoBCGS2(Q: DistributedDenseMatrix, WIn: DistributedDenseMatrix, A: DistributedSparseMatrix, CGS2: Boolean, cache: Boolean=true)`
