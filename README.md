@@ -141,3 +141,331 @@ println(Q.dot(ret._2)) // Check columns of P are Aorthogonal to Q (Q^t * AW = 0)
 println("Check values against themselves are scaled to 1")
 println(ret._1.diagonalDot(ret._2)) // Check columns of W are Aorthonormal (W_i^t * AW_i = 1)
 ```
+
+# Loading Data
+The `lb.edu.aub.hyrax` package contains a number of helper functions and classes to help preprocessing data. Namely, the loading and partitioning of sparse and dense matrices.
+
+## Dense Matrix
+Data files are expected to be space separated values with a new line for each row.  
+Values can be in decimal or scientific notation.
+
+For example, the file for a <img src="https://render.githubusercontent.com/render/math?math=4\times 4"> dense matrix may look like:
+
+>`-3.223e-03 -1.856e-04 -9.201e-03 8.022e-03`  
+>`5.594e-03 3.538e-03 1.665e-02 -2.367e-03`  
+>`-4.1 -1.709 -0.017 -6.47`  
+>`0.0642 1.14 1.02 0.005`
+
+`readDenseMatRDD(path: String, sc: SparkContext)`
+
+> `path`: `String`, file path of the matrix  
+> `sc`: `SparkContext`, the current `SparkContext`, used to parallelize the data across the cluster    
+
+> output: `RDD[(Long, Array[Double])]` key value pairs of row indexes and row values
+
+## Sparse Matrix
+Data files are expected to be space separated triplets of row index, column index and value with a new line for each entry.  
+Values can be in decimal or scientific notation.
+
+For example, the file for a sparse matrix with 3 entries may look like:
+
+>`1 1 0.4`  
+>`2 1 -2.2`  
+>`3 3 0.01`
+
+Sometimes a symmetric sparse matrix will be stored as just the upper triangular or lower triangular entries to save space. In this case set the `reflect` parameter to `true`.
+
+` readSparseMatrixRDD(path: String, sc: SparkContext, rowKey: Boolean=false, reflect: Boolean=false)`
+
+> `path`: `String`, file path of the matrix  
+> `sc`: `SparkContext`, the current `SparkContext`, used to parallelize the data across the cluster  
+> `rowKey`: `Boolean`, whether to use the row index as the key for the output `RDD`, this should be set to `false` if the `rdd` is to be used with the `DistributedSparseMatrix` class  
+> `reflect`: `Boolean`, whether to add a reflection of the off diagonal values of the matrix
+
+> output: `RDD[(Long, (Long, Double))]` key value pairs of (row, (col, value)) if `rowKey` else (col, (row, value)) 
+
+## Partitioning Data
+Performance is best for `aorthoBCGS2` when the data is partitioned in contiguous blocks such that there are as few entries as possible in <img src="https://render.githubusercontent.com/render/math?math=A"> off the block diagonal. This reduces the amount of data that needs to be shuffled when computing <img src="https://render.githubusercontent.com/render/math?math=A\times P">. To give greater control over partitioning, we created a `FixedRangePartitioner` class. This works similarly to the `org.apache.spark.RangePartitioner` class but allows user-defined values to be chosen for the partition indexes.  For best performance, all matrices should be partitioned with the same partitioner.
+
+`FixedRangePartitioner(val ranges: Array[(Long, Long)]) extends Partitioner`
+
+> `ranges`: `Array[(Long, Long)]`, the start and end index for each partition
+
+Note that the number of partitions is equal to the length of `ranges`. If the index key of an entry falls outside of the ranges given, it is placed in partition `0` by default.
+
+```Scala
+import lb.edu.aub.hyrax.DistributedDenseMatrix
+import lb.edu.aub.hyrax.DistributedSparseMatrix
+import lb.edu.aub.hyrax.FixedRangePartitioner
+import lb.edu.aub.hyrax.LoadData.{readDenseMatRDD, readSparseMatRDD}
+
+val dir = "/FileStore/tables/testdata/"
+
+// size of the matrix
+val n = 10000
+// define partitions
+val partitions:Array[(Long, Long)] = Array((0, 1999), (2000, 4999), (5000, 6999), (7000, 9999))
+// create partitioner
+val p = new FixedRangePartitioner(partitions)
+
+// Load data
+val Q = new DistributedDenseMatrix(readDenseMatRDD(dir + "Q.out", sc).partitionBy(p).cache)
+val W = new DistributedDenseMatrix(readDenseMatRDD(dir + "W.out", sc).partitionBy(p).cache)
+val A = new DistributedSparseMatrix(readSparseMatRDD(dir + "A.out", sc, false, false).partitionBy(p).cache, n)
+```
+
+# Matrix Operations
+The aorthonormalization routine is composed of distributed matrix operations working on a number of matrix classes.
+
+Three different types of matrices are used:
+* `DenseMatrix` - local dense matrices from the `breeze.linalg` library
+* `DistributedDenseMatrix` - our custom RDD wrapper for distributed dense matrices
+* `DistributedSparseMatrix` - our custom RDD wrapper for distributed sparse matrices
+
+Here we will review the operations provided by the custom distributed matrix classes.
+
+## Distributed Dense Matrix
+
+
+### Instance Constructors
+`new DistributedDenseMatrix(rows: RDD[(Long, Array[Double])], dim: (Long, Long))`  
+>`rows`: a key value pair `RDD` with values the rows in the matrix, keys the index of the row  
+>`dim`: the dimensions of the matrix as (nrows, ncols)
+
+
+`new DistributedDenseMatrix(rows: RDD[(Long, Array[Double])])`  
+>If the `dim` parameter is not included, the constructor will use the `RDD` to look them up at a small computational overhead
+
+note: this class makes the assumption that all rows in the matrix have an entry in the `RDD` and all value arrays have the same length.
+
+```Scala
+import lb.edu.aub.hyrax.DistributedDenseMatrix
+// Create a rows RDD
+val rows: RDD[(Long, Array[Double])] = sc.parallelize(Seq((0, Array(0.0, 1.0)),
+                                                          (1, Array(2.0, 3.0)),
+                                                          (2, Array(3.0, 4.0))))
+// Create a DDM with dim
+val ddm1 = new DistributedDenseMatrix(rows, (3, 2))
+
+// Create a DDM without dim
+val ddm2 = new DistributedDenseMatrix(rows)
+println(ddm2.dim)
+```
+
+### Right Multiplication by a Local Matrix  
+`ddm * bdm`  
+> `ddm`: `DistributedDenseMatrix` of dimension _(m, n)_  
+> `bdm`: `Breeze` `DenseMatrix` of dimension _(n, k)_  
+>  
+> output: `DistributedDenseMatrix` of dimension _(m, k)_
+
+```Scala
+import breeze.linalg.DenseMatrix
+
+// Create a rows RDD
+val rows: RDD[(Long, Array[Double])] = sc.parallelize(Seq((0, Array(0.0, 1.0)),
+                                                          (1, Array(2.0, 3.0)),
+                                                          (2, Array(3.0, 4.0))))
+// Create a DDM
+val ddm1 = new DistributedDenseMatrix(rows)
+// Create a local DenseMatrix
+val bdm = DenseMatrix((1.0, 2.0), (0.5, 0.5))
+
+val ddm2 = ddm1 * bdm
+```
+
+### Matrix Addition and Subtraction  
+`ddm1 + ddm2`  
+`ddm1 - ddm2`
+> `ddm1`: `DistributedDenseMatrix` of dimension _(m, n)_  
+> `ddm2`: `DistributedDenseMatrix` of dimension _(m, n)_  
+>  
+> output: `DistributedDenseMatrix` of dimension _(m, n)_
+
+```Scala
+// Create rows RDDs
+val rows1: RDD[(Long, Array[Double])] = sc.parallelize(Seq((0, Array(0.0, 1.0)),
+                                                           (1, Array(2.0, 3.0)),
+                                                           (2, Array(3.0, 4.0))))
+val rows2: RDD[(Long, Array[Double])] = sc.parallelize(Seq((0, Array(1.0, 1.0)),
+                                                           (1, Array(1.0, 1.0)),
+                                                           (2, Array(3.0, 4.0))))
+
+// Create DDMs
+val ddm1 = new DistributedDenseMatrix(rows1)
+val ddm2 = new DistributedDenseMatrix(rows2)
+
+val ddm3 = ddm1 + ddm2
+
+val ddm4 = ddm1 - ddm2
+```
+
+### Elementwise Division by a Single Number
+
+`ddm / x`  
+
+> `ddm`: `DistributedDenseMatrix` of dimension _(m, n)_  
+> `x`: `Double`  
+>  
+> output: `DistributedDenseMatrix` of dimension _(m, n)_
+
+```Scala
+// Create rows RDD
+val rows: RDD[(Long, Array[Double])] = sc.parallelize(Seq((0, Array(0.0, 1.0)),
+                                                          (1, Array(2.0, 3.0)),
+                                                          (2, Array(3.0, 4.0))))
+
+// Create DDM
+val ddm1 = new DistributedDenseMatrix(rows)
+
+val ddm2 = ddm1 / 2.0
+```
+
+## Elementwise Division for Each Column
+`ddm / scaleFactors`  
+Divides the <img src="https://render.githubusercontent.com/render/math?math=i^{th}"> column in `ddm` by the <img src="https://render.githubusercontent.com/render/math?math=i^{th}"> entry in `v`
+
+> `ddm`: `DistributedDenseMatrix` of dimension _(n, k)_  
+> `scaleFactors`: `Array[Double]` of length _k_    
+>  
+> output: `DistributedDenseMatrix` of dimension _(n, k)_
+
+```Scala
+// Create rows RDD
+val rows: RDD[(Long, Array[Double])] = sc.parallelize(Seq((0, Array(0.0, 1.0)),
+                                                          (1, Array(2.0, 3.0)),
+                                                          (2, Array(3.0, 4.0))))
+
+// Create DDM
+val ddm1 = new DistributedDenseMatrix(rows)
+// Create a local DenseMatrix
+val scaleFactors = Array(2.0, 0.5)
+
+val ddm2 = ddm1 / scaleFactors
+```
+
+### Dot Product
+`ddm1.dot(ddm2)`
+
+equivalent to <img src="https://render.githubusercontent.com/render/math?math=M_1^tM_2">, dot product of the columns of the matrices
+
+> `ddm1`: `DistributedDenseMatrix` of dimension _(n, j)_  
+> `ddm2`: `DistributedDenseMatrix` of dimension _(n, k)_  
+>  
+> output: `Breeze` `DenseMatrix` of dimension _(j, k)_
+
+```Scala
+// Create rows RDD
+val rows1: RDD[(Long, Array[Double])] = sc.parallelize(Seq((0, Array(0.0, 1.0)),
+                                                           (1, Array(2.0, 3.0)),
+                                                           (2, Array(3.0, 4.0))))
+val rows2: RDD[(Long, Array[Double])] = sc.parallelize(Seq((0, Array(1.0, 1.0)),
+                                                           (1, Array(3.0, 2.0)),
+                                                           (2, Array(2.0, 1.0))))
+
+// Create DDMs
+val ddm1 = new DistributedDenseMatrix(rows1)
+val ddm2 = new DistributedDenseMatrix(rows2)
+
+val bdm = ddm1.dot(ddm2)
+
+println(bdm)
+```
+
+### Diagonal Dot Product
+`ddm1.diagonalDot(ddm2)`
+
+The diagonal of the matrix output by `ddm1.dot(ddm2)`
+
+> `ddm1`: `DistributedDenseMatrix` of dimension _(n, k)_  
+> `ddm2`: `DistributedDenseMatrix` of dimension _(n, k)_  
+>  
+> output: `Breeze` `DenseMatrix` of dimension _(1, k)_
+
+```Scala
+// Create rows RDD
+val rows1: RDD[(Long, Array[Double])] = sc.parallelize(Seq((0, Array(0.0, 1.0)),
+                                                           (1, Array(2.0, 3.0)),
+                                                           (2, Array(3.0, 4.0))))
+val rows2: RDD[(Long, Array[Double])] = sc.parallelize(Seq((0, Array(1.0, 1.0)),
+                                                           (1, Array(3.0, 2.0)),
+                                                           (2, Array(2.0, 1.0))))
+
+// Create DDMs
+val ddm1 = new DistributedDenseMatrix(rows1)
+val ddm2 = new DistributedDenseMatrix(rows2)
+
+val bdm = ddm1.diagonalDot(ddm2)
+
+println(bdm)
+```
+
+### Cache internal `RDD`
+
+`ddm.cache()`
+
+Cache the `ddm.rows` `RDD`.
+
+> output: `RDD[(Long, Array[Double])]`, `ddm.rows`
+
+## Distributed Sparse Matrix
+
+### Instance Constructor
+`new DistributedDenseMatrix(entries: RDD[(Long, (Long, Double))], n: Long)`  
+>`rows`: a key value pair `RDD` with values the rows in the matrix, keys the index of the row  
+>`n`: the size of the square matrix
+
+```Scala
+import lb.edu.aub.hyrax.DistributedSparseMatrix
+// Create an entries RDD
+val entries: RDD[(Long, (Long, Double))] = sc.parallelize(Seq((0, (0, 1.0)),
+                                                              (1, (1, 2.0)),
+                                                              (1, (2, 1.0)),
+                                                              (2, (1, 1.0)),
+                                                              (2, (2, 3.0))))
+// Create a DSM
+val dsm = new DistributedSparseMatrix(entries, 3)
+```
+
+### Right Multiply by DDM
+`dsm * ddm`
+
+> `dsm`: `DistributedSparseMatrix` of dimension _(n, n)_  
+> `ddm`: `DistributedDenseMatrix` of dimension _(n, k)_  
+>  
+> output: `DistributedDenseMatrix` of dimension _(n, k)_
+
+```
+// Create an entries RDD
+val entries: RDD[(Long, (Long, Double))] = sc.parallelize(Seq((0, (0, 1.0)),
+                                                              (1, (1, 2.0)),
+                                                              (1, (2, 1.0)),
+                                                              (2, (1, 1.0)),
+                                                              (2, (2, 3.0))))
+// Create rows RDD
+val rows: RDD[(Long, Array[Double])] = sc.parallelize(Seq((0, Array(0.0, 1.0)),
+                                                          (1, Array(2.0, 3.0)),
+                                                          (2, Array(3.0, 4.0))))
+
+// Create Matrices
+val dsm = new DistributedSparseMatrix(entries, 3)
+val ddm1 = new DistributedDenseMatrix(rows)
+
+val ddm2 = dsm * ddm1
+```
+
+### Print Matrix Statistics
+`dsm.printMatStats()`
+
+Print matrix statistics such as:
+- sparsity, proportion of entries which are non-zero 
+- number of non-zero entries off the block diagonal
+-  proportion of nonzero entries which are off the block diagonal 
+
+### Cache internal `RDD`
+
+`ddm.cache()`
+
+Cache the `ddm.rows` `RDD`.
+
+> output: `RDD[(Long, Array[Double])]`, `ddm.rows`
