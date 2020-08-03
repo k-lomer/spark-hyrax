@@ -56,7 +56,7 @@ val n = 10000
 // define partitions
 val partitions: Array[(Long, Long)] = Array((0, 2499), (2500, 4999), (5000, 7499), (7500, 9999))
 // create partitioner
-val W = new FixedRangePartitioner(partitions)
+val p = new FixedRangePartitioner(partitions)
 
 // Load data
 val Q = new DistributedDenseMatrix(readDenseMatRDD(dir + "Q.out", sc).partitionBy(p).cache)
