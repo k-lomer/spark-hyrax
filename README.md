@@ -184,7 +184,7 @@ Sometimes a symmetric sparse matrix will be stored as just the upper triangular 
 > output: `RDD[(Long, (Long, Double))]` key value pairs of (row, (col, value)) if `rowKey` else (col, (row, value)) 
 
 ## Partitioning Data
-Performance is best for `aorthoBCGS2` when the data is partitioned in contiguous blocks such that there are as few entries as possible in <img src="https://render.githubusercontent.com/render/math?math=A"> off the block diagonal. This reduces the amount of data that needs to be shuffled when computing <img src="https://render.githubusercontent.com/render/math?math=A\times P">. To give greater control over partitioning, we created a `FixedRangePartitioner` class. This works similarly to the `org.apache.spark.RangePartitioner` class but allows user-defined values to be chosen for the partition indexes.  For best performance, all matrices should be partitioned with the same partitioner.
+Performance is best for `aorthoBCGS` when the data is partitioned in contiguous blocks such that there are as few entries as possible in <img src="https://render.githubusercontent.com/render/math?math=A"> off the block diagonal. This reduces the amount of data that needs to be shuffled when computing <img src="https://render.githubusercontent.com/render/math?math=A\times P">. To give greater control over partitioning, we created a `FixedRangePartitioner` class. This works similarly to the `org.apache.spark.RangePartitioner` class but allows user-defined values to be chosen for the partition indexes.  For best performance, all matrices should be partitioned with the same partitioner.
 
 `FixedRangePartitioner(val ranges: Array[(Long, Long)]) extends Partitioner`
 
@@ -239,7 +239,10 @@ note: this class makes the assumption that all rows in the matrix have an entry 
 
 ```Scala
 import lb.edu.aub.hyrax.DistributedDenseMatrix
+// To create the matrix A = [0 1; 2 3; 3 4] (written as a matrix like in latex) 
+
 // Create a rows RDD
+
 val rows: RDD[(Long, Array[Double])] = sc.parallelize(Seq((0, Array(0.0, 1.0)),
                                                           (1, Array(2.0, 3.0)),
                                                           (2, Array(3.0, 4.0))))
@@ -416,6 +419,8 @@ Cache the `ddm.rows` `RDD`.
 
 ```Scala
 import lb.edu.aub.hyrax.DistributedSparseMatrix
+// To create the matrix A = [1 0 0; 0 2 1; 0 1 3 ] (written as a matrix like in latex) 
+
 // Create an entries RDD
 val entries: RDD[(Long, (Long, Double))] = sc.parallelize(Seq((0, (0, 1.0)),
                                                               (1, (1, 2.0)),
