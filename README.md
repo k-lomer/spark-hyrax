@@ -238,11 +238,10 @@ Here we will review the operations provided by the custom distributed matrix cla
 note: this class makes the assumption that all rows in the matrix have an entry in the `RDD` and all value arrays have the same length.
 
 ```Scala
-import lb.edu.aub.hyrax.DistributedDenseMatrix
 // To create the matrix A = [0 1; 2 3; 3 4] (written as a matrix like in latex) 
+import lb.edu.aub.hyrax.DistributedDenseMatrix
 
 // Create a rows RDD
-
 val rows: RDD[(Long, Array[Double])] = sc.parallelize(Seq((0, Array(0.0, 1.0)),
                                                           (1, Array(2.0, 3.0)),
                                                           (2, Array(3.0, 4.0))))
@@ -418,8 +417,8 @@ Cache the `ddm.rows` `RDD`.
 >`n`: the size of the square matrix
 
 ```Scala
-import lb.edu.aub.hyrax.DistributedSparseMatrix
 // To create the matrix A = [1 0 0; 0 2 1; 0 1 3 ] (written as a matrix like in latex) 
+import lb.edu.aub.hyrax.DistributedSparseMatrix
 
 // Create an entries RDD
 val entries: RDD[(Long, (Long, Double))] = sc.parallelize(Seq((0, (0, 1.0)),
