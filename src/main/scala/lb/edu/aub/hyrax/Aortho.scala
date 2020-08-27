@@ -3,7 +3,8 @@ package lb.edu.aub.hyrax
 import breeze.numerics.sqrt
 
 object Aortho {
-  /*The function A-orthonormalizes the given vectors W against the vectors
+  /* aorthoBCGS - Block Classical Gram-Schmidt A-orthonormalization
+  The function A-orthonormalizes the given vectors W against the vectors
   of Q using the classical Gram Schmidt procedure with reorthonormalization.
 
   // input Q: DistributedDenseMatrix, a dense matrix whose columns are previous basis vectors to A-orthonormalize against
@@ -14,8 +15,8 @@ object Aortho {
   // output W: DistributedDenseMatrix, dense  matrix W A-ortonormalized wrt to the columns of Q
   */
   def aorthoBCGS( Q: DistributedDenseMatrix,
-                          WIn: DistributedDenseMatrix,  A: DistributedSparseMatrix,
-                          CGS2: Boolean, cache: Boolean=true):
+                  WIn: DistributedDenseMatrix,  A: DistributedSparseMatrix,
+                  CGS2: Boolean, cache: Boolean=true):
   DistributedDenseMatrix = {
     val AW = A * WIn
     val proj = Q.dot(AW)
