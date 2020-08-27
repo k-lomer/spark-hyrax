@@ -11,7 +11,7 @@ Vectors <img src="https://render.githubusercontent.com/render/math?math=u,v\in \
 
 The Block Classical Gram–Schmidt A-orthonormalization operation (BCGS) takes a <img src="https://render.githubusercontent.com/render/math?math=n\times tk"> matrix <img src="https://render.githubusercontent.com/render/math?math=Q"> whose columns are A-orthonormal and a <img src="https://render.githubusercontent.com/render/math?math=n\times t"> matrix <img src="https://render.githubusercontent.com/render/math?math=W"> whose columns will be A-orthonormalized. The return value is a <img src="https://render.githubusercontent.com/render/math?math=n\times t"> matrix <img src="https://render.githubusercontent.com/render/math?math=W'"> whose columns are A-orthonormal to those of <img src="https://render.githubusercontent.com/render/math?math=Q">. For greater numerical accuracy, we apply the routine twice, first to <img src="https://render.githubusercontent.com/render/math?math=(Q,W)"> and then to <img src="https://render.githubusercontent.com/render/math?math=(Q,W')">. This is known as BCGS2.
 
-##Regular implementation
+## Regular implementation
 The naive implementation of BCGS requires the sparse matrix <img src="https://render.githubusercontent.com/render/math?math=A"> as an input and is twice multiplied by the tall skinny dense matrix <img src="https://render.githubusercontent.com/render/math?math=W"> during the routine.  
 This may involve data shuffling between partitions if there are values in <img src="https://render.githubusercontent.com/render/math?math=A"> which are off of the block diagonal.
 
@@ -29,7 +29,7 @@ ___
 5. <img src="https://render.githubusercontent.com/render/math?math=\quad \tilde{W}(:,i)=\frac{\tilde{W}(:i)}{\sqrt{\tilde{W}(:i)^t\tilde{X}(:,i)}}">
 6. **end for**
 
-`aorthoBCGS2(Q: DistributedDenseMatrix, WIn: DistributedDenseMatrix, A: DistributedSparseMatrix, CGS2: Boolean, cache: Boolean=true)`
+`aorthoBCGS(Q: DistributedDenseMatrix, WIn: DistributedDenseMatrix, A: DistributedSparseMatrix, CGS2: Boolean, cache: Boolean=true)`
 
 > `Q`: `DistributedDenseMatrix` of dimension _(n, tk)_, the previous _tk_ column vectors to A-orthonormalize against  
 > `WIn`: `DistributedDenseMatrix` of dimension _(n, t)_, the _t_ column vectors to A-orthonormalize   
@@ -40,7 +40,6 @@ ___
 > output: `DistributedDenseMatrix` of dimension _(n, t)_, the column vectors of `WIn` A-orthonormalized against `Q`
 
 #### Example Usage
-See the Load data documentation for more information on the data preprocessing
 
 ```Scala
 import lb.edu.aub.hyrax.Aortho.aorthoBCGS
@@ -74,11 +73,11 @@ println("Check values against themselves are scaled to 1")
 println(newW.diagonalDot(A * newW)) // Check columns of W are Aorthonormal (W_i^t * A * W_i = 1)
 ```
 
-## Low communication implementation
+## Communication avoiding implementation
 To reduce the communication we do not directly multiply <img src="https://render.githubusercontent.com/render/math?math=A"> and <img src="https://render.githubusercontent.com/render/math?math=W"> but instead maintain and update a matrix containing <img src="https://render.githubusercontent.com/render/math?math=AW">.  
 This removes the need to shuffle data between nodes, the only communication comes from `reduce` operations.
 
-**Algorithm**  A-orthonormalization against previous vectors with BCGS, with low communication
+**Algorithm**  Communication avoiding A-orthonormalization against previous vectors with BCGS
 ___
 
 > **Input:** <img src="https://render.githubusercontent.com/render/math?math=Q">, the <img src="https://render.githubusercontent.com/render/math?math=tk"> column vectors to A-orthonormalize against  
@@ -96,7 +95,7 @@ ___
 7. <img src="https://render.githubusercontent.com/render/math?math=\quad \tilde{X}(:,i)=\frac{\tilde{X}(:i)}{s_i}">
 8. **end for**
 
-`aorthoBCGS2LowCom(Q: DistributedDenseMatrix, AQ: DistributedDenseMatrix, WIn: DistributedDenseMatrix, AWIn: DistributedDenseMatrix, CGS2: Boolean, cache: Boolean=true)`
+`aorthoCABCGS(Q: DistributedDenseMatrix, AQ: DistributedDenseMatrix, WIn: DistributedDenseMatrix, AWIn: DistributedDenseMatrix, CGS2: Boolean, cache: Boolean=true)`
 
 > `Q`: `DistributedDenseMatrix` of dimension _(n, tk)_, the previous _tk_ column vectors to A-orthonormalize against  
 > `AQ`: `DistributedDenseMatrix` of dimension _(n, tk)_, `A * Q`  
@@ -108,7 +107,7 @@ ___
 > output: (`DistributedDenseMatrix`, `DistributedDenseMatrix`) two matrices both of dimension _(n, t)_, `newW` the column vectors of `WIn` A-orthonormalized against `Q` and `A * newW`
 
 ```Scala
-import lb.edu.aub.hyrax.AorthoLowCom.aorthoBCGSLowCom
+import lb.edu.aub.hyrax.AorthoCA.aorthoCABCGS
 import lb.edu.aub.hyrax.DistributedDenseMatrix
 import lb.edu.aub.hyrax.DistributedSparseMatrix
 import lb.edu.aub.hyrax.FixedRangePartitioner
@@ -132,7 +131,7 @@ val AW = A * W
 AQ.cache; AW.cache
 
 println("Low Communication Aortho")
-val ret = aorthoBCGSLowCom(Q, AQ, W, AW, true) // returns (newW, newAW)
+val ret = aorthoCABCGS(Q, AQ, W, AW, true) // returns (newW, newAW)
 
 println("Check values are Aortho")
 println("Against Q")
