@@ -2,9 +2,9 @@
 Distributed methods for block A-orthonormalization
 
 # A-orthonormalization
-The `lb.edu.aub.hyrax` package contains two implementations of the Classical Gram–Schmidt A-orthonormalization routines for distributed Spark clusters. The algorithms are based on the paper _Enlarged Krylov Subspace Methods and Preconditioners for Avoiding Communication_ by Sophie Moufawad. This paper presents a number of routines for Enlarged Krylov Supspace Conjugate Gradient methods, with adaptations to reduce the communication costs of performing parallel or distributed computations. The A-orthonormalization subroutine is one of the core operations of these methods and in experimental testing it was responsible for around half of the work done by the full CG method.
+The `lb.edu.aub.hyrax` package contains two implementations of the Classical Gram–Schmidt A-orthonormalization routines for distributed Spark clusters. The algorithms are based on the paper _Enlarged Krylov Subspace Conjugate Gradient Methods for Reducing Communication_ [[1]](#1). This paper presents a number of routines for Enlarged Krylov Supspace Conjugate Gradient methods, with adaptations to reduce the communication costs of performing parallel or distributed computations. The A-orthonormalization subroutine is one of the core operations of these methods and in experimental testing it was responsible for around half of the work done by the full CG method.
 
-This implementation uses custom matrix classes for distributed operations. Please see the Matrix documentation notebook for more information on the Matrix operations
+This implementation uses custom matrix classes for distributed operations. Please see the Matrix Operations section below for more information.
 
 ### Operation Definition
 Vectors <img src="https://render.githubusercontent.com/render/math?math=u,v\in \mathbb{R}^n"> said to be _A-orthonormal_ for a given <img src="https://render.githubusercontent.com/render/math?math=n\times n"> matrix <img src="https://render.githubusercontent.com/render/math?math=A">, if <img src="https://render.githubusercontent.com/render/math?math=u^tAv=0"> and <img src="https://render.githubusercontent.com/render/math?math=u^tAu=v^tAv=1">
@@ -472,3 +472,9 @@ Print matrix statistics such as:
 Cache the `ddm.rows` `RDD`.
 
 > output: `RDD[(Long, Array[Double])]`, `ddm.rows`
+
+## References
+<a id="1">[1]</a> 
+[Enlarged Krylov Subspace Conjugate Gradient Methods for Reducing Communication](https://epubs.siam.org/doi/abs/10.1137/140989492)
+Laura Grigori, Sophie Moufawad, and Frederic Nataf
+_SIAM Journal on Matrix Analysis and Applications 2016 37:2, 744-773_ 
