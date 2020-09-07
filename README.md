@@ -2,9 +2,9 @@
 Distributed methods for block A-orthonormalization
 
 # A-orthonormalization
-The `lb.edu.aub.hyrax` package contains two implementations of the Classical Gram–Schmidt A-orthonormalization routines for distributed Spark clusters. The algorithms are based on the paper _Enlarged Krylov Subspace Methods and Preconditioners for Avoiding Communication_ by Sophie Moufawad. This paper presents a number of routines for Enlarged Krylov Supspace Conjugate Gradient methods, with adaptations to reduce the communication costs of performing parallel or distributed computations. The A-orthonormalization subroutine is one of the core operations of these methods and in experimental testing it was responsible for around half of the work done by the full CG method.
+The `lb.edu.aub.hyrax` package contains two implementations of the Classical Gram–Schmidt A-orthonormalization routines for distributed Spark clusters. The algorithms are based on the paper _Enlarged Krylov Subspace Conjugate Gradient Methods for Reducing Communication_ [[1]](#1). This paper presents a number of routines for Enlarged Krylov Supspace Conjugate Gradient methods, with adaptations to reduce the communication costs of performing parallel or distributed computations. The A-orthonormalization subroutine is one of the core operations of these methods and in experimental testing it was responsible for around half of the work done by the full CG method.
 
-This implementation uses custom matrix classes for distributed operations. Please see the Matrix documentation notebook for more information on the Matrix operations
+This implementation uses custom matrix classes for distributed operations. Please see the Matrix Operations section below for more information.
 
 ### Operation Definition
 Vectors <img src="https://render.githubusercontent.com/render/math?math=u,v\in \mathbb{R}^n"> said to be _A-orthonormal_ for a given <img src="https://render.githubusercontent.com/render/math?math=n\times n"> matrix <img src="https://render.githubusercontent.com/render/math?math=A">, if <img src="https://render.githubusercontent.com/render/math?math=u^tAv=0"> and <img src="https://render.githubusercontent.com/render/math?math=u^tAu=v^tAv=1">
@@ -184,7 +184,7 @@ Sometimes a symmetric sparse matrix will be stored as just the upper triangular 
 > output: `RDD[(Long, (Long, Double))]` key value pairs of (row, (col, value)) if `rowKey` else (col, (row, value)) 
 
 ## Partitioning Data
-Performance is best for `aorthoBCGS2` when the data is partitioned in contiguous blocks such that there are as few entries as possible in <img src="https://render.githubusercontent.com/render/math?math=A"> off the block diagonal. This reduces the amount of data that needs to be shuffled when computing <img src="https://render.githubusercontent.com/render/math?math=A\times P">. To give greater control over partitioning, we created a `FixedRangePartitioner` class. This works similarly to the `org.apache.spark.RangePartitioner` class but allows user-defined values to be chosen for the partition indexes.  For best performance, all matrices should be partitioned with the same partitioner.
+Performance is best for `aorthoBCGS` when the data is partitioned in contiguous blocks such that there are as few entries as possible in <img src="https://render.githubusercontent.com/render/math?math=A"> off the block diagonal. This reduces the amount of data that needs to be shuffled when computing <img src="https://render.githubusercontent.com/render/math?math=A\times P">. To give greater control over partitioning, we created a `FixedRangePartitioner` class. This works similarly to the `org.apache.spark.RangePartitioner` class but allows user-defined values to be chosen for the partition indexes.  For best performance, all matrices should be partitioned with the same partitioner.
 
 `FixedRangePartitioner(val ranges: Array[(Long, Long)]) extends Partitioner`
 
@@ -238,7 +238,9 @@ Here we will review the operations provided by the custom distributed matrix cla
 note: this class makes the assumption that all rows in the matrix have an entry in the `RDD` and all value arrays have the same length.
 
 ```Scala
+// To create the matrix A = [0 1; 2 3; 3 4] (written as a matrix like in latex) 
 import lb.edu.aub.hyrax.DistributedDenseMatrix
+
 // Create a rows RDD
 val rows: RDD[(Long, Array[Double])] = sc.parallelize(Seq((0, Array(0.0, 1.0)),
                                                           (1, Array(2.0, 3.0)),
@@ -415,7 +417,9 @@ Cache the `ddm.rows` `RDD`.
 >`n`: the size of the square matrix
 
 ```Scala
+// To create the matrix A = [1 0 0; 0 2 1; 0 1 3 ] (written as a matrix like in latex) 
 import lb.edu.aub.hyrax.DistributedSparseMatrix
+
 // Create an entries RDD
 val entries: RDD[(Long, (Long, Double))] = sc.parallelize(Seq((0, (0, 1.0)),
                                                               (1, (1, 2.0)),
@@ -468,3 +472,9 @@ Print matrix statistics such as:
 Cache the `ddm.rows` `RDD`.
 
 > output: `RDD[(Long, Array[Double])]`, `ddm.rows`
+
+## References
+<a id="1">[1]</a> 
+[Enlarged Krylov Subspace Conjugate Gradient Methods for Reducing Communication](https://epubs.siam.org/doi/abs/10.1137/140989492)
+Laura Grigori, Sophie Moufawad, and Frederic Nataf
+_SIAM Journal on Matrix Analysis and Applications 2016 37:2, 744-773_ 
