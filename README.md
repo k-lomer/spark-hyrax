@@ -1,6 +1,10 @@
 # spark-hyrax
 Distributed methods for block A-orthonormalization
 
+This project was funded by the university research board grant at the American University of Beirut.
+
+Code by K. Lomer. Supervised by Dr F. Abu Salem, Dr S. Moufawad, Dr M. El Baker Nassar.
+
 # A-orthonormalization
 The `lb.edu.aub.hyrax` package contains two implementations of the Classical Gram–Schmidt A-orthonormalization routines for distributed Spark clusters. The algorithms are based on the paper _Enlarged Krylov Subspace Conjugate Gradient Methods for Reducing Communication_ [[1]](#1). This paper presents a number of routines for Enlarged Krylov Supspace Conjugate Gradient methods, with adaptations to reduce the communication costs of performing parallel or distributed computations. The A-orthonormalization subroutine is one of the core operations of these methods and in experimental testing it was responsible for around half of the work done by the full CG method.
 
